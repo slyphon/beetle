@@ -1,8 +1,16 @@
 $:.unshift(File.expand_path('..', __FILE__))
 require 'bunny-ext'
-require 'uuid4r'
+
+unless defined?(::JRUBY_VERSION)
+  require 'uuid4r'
+end
+
 require 'active_support/all'
 require 'redis'
+
+if defined?(::JRUBY_VERSION)
+  require 'java'
+end
 
 module Beetle
 
@@ -35,6 +43,9 @@ module Beetle
   Dir["#{lib_dir}/*.rb"].each do |libfile|
     autoload File.basename(libfile)[/^(.*)\.rb$/, 1].classify, libfile
   end
+
+  # XXX(slyphon) couldn't get the autoload to work properly for this...
+  require "#{lib_dir}/uuid"
 
   require "#{lib_dir}/redis_ext"
 

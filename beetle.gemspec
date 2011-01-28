@@ -28,7 +28,13 @@ Gem::Specification.new do |s|
   INFO
 
   s.specification_version = 3
-  s.add_runtime_dependency("uuid4r",                [">= 0.1.1"])
+  
+  # TODO: need to figure out how to do this for both jruby & mri
+  
+  unless defined?(::JRUBY_VERSION)
+    s.add_runtime_dependency("uuid4r",                [">= 0.1.1"])
+  end
+
   s.add_runtime_dependency("bunny",                 ["= 0.6.0"])
   s.add_runtime_dependency("bunny-ext",             [">= 0.6.5"])
   s.add_runtime_dependency("redis",                 ["= 2.0.4"])

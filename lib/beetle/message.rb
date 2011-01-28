@@ -121,7 +121,7 @@ module Beetle
 
     # generate uuid for publishing
     def self.generate_uuid
-      UUID4R::uuid(1)
+      Beetle::UUID.uuid()
     end
 
     # whether the publisher has tried sending this message to two servers
