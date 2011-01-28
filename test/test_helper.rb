@@ -1,7 +1,8 @@
 require 'rubygems'
-require 'active_support'
+require 'active_support/all'
 require 'active_support/testing/declarative'
 require 'test/unit'
+
 begin
   require 'redgreen' unless ENV['TM_FILENAME']
 rescue MissingSourceFile

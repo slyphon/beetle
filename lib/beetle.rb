@@ -1,7 +1,7 @@
 $:.unshift(File.expand_path('..', __FILE__))
 require 'bunny-ext'
 require 'uuid4r'
-require 'active_support'
+require 'active_support/all'
 require 'redis'
 
 module Beetle
