@@ -54,6 +54,14 @@ module Beetle
     # external config file (defaults to <tt>no file</tt>)
     attr_reader :config_file
 
+    # the mongodb connect uri to use
+    attr_accessor :mongo_uri
+    # the name of the mongodb database to use
+    attr_accessor :mongo_db_name
+    # the name of the mongodb collection to use for the dedup store
+    attr_accessor :mongo_collection_name
+
+
     def initialize #:nodoc:
       self.system_name = "system"
 
@@ -75,6 +83,10 @@ module Beetle
       self.password = "guest"
 
       self.publishing_timeout = 0
+
+      self.mongo_uri = 'mongodb://localhost:27107'
+      self.mongo_db_name = 'beetle_deduplication_store'
+      self.mongo_collection_name = 'messages'
 
       self.log_file = STDOUT
     end

@@ -33,6 +33,10 @@ module Beetle
     # list of key suffixes to use for storing values in Redis.
     KEY_SUFFIXES = [:status, :ack_count, :timeout, :delay, :attempts, :exceptions, :mutex, :expires]
 
+    # no-op for redis
+    def prepare(msg_id)
+    end
+
     # build a Redis key out of a message id and a given suffix
     def key(msg_id, suffix)
       "#{msg_id}:#{suffix}"

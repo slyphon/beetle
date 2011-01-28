@@ -79,6 +79,7 @@ module Beetle
       @format_version = headers[:format_version].to_i
       @flags = headers[:flags].to_i
       @expires_at = headers[:expires_at].to_i
+      @store.prepare(msg_id)
     rescue Exception => @exception
       Beetle::reraise_expectation_errors!
       logger.error "Could not decode message. #{self.inspect}"
