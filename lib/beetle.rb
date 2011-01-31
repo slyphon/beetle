@@ -12,6 +12,8 @@ if defined?(::JRUBY_VERSION)
   require 'java'
 end
 
+require 'set'
+
 module Beetle
 
   # abstract superclass for Beetle specific exceptions

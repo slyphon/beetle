@@ -46,7 +46,7 @@ module Beetle
     attr_reader :config
 
     # create a fresh Client instance from a given configuration object
-    def initialize(config = Beetle.config)
+    def initialize(config=Beetle.config, deduplication_store=nil)
       @config  = config
       @servers = config.servers.split(/ *, */)
       @additional_subscription_servers = config.additional_subscription_servers.split(/ *, */)
@@ -54,7 +54,7 @@ module Beetle
       @queues = {}
       @messages = {}
       @bindings = {}
-      @deduplication_store = DeduplicationStore.new(config)
+      @deduplication_store = (deduplication_store || DeduplicationStore.new(config))
     end
 
     # register an exchange with the given _name_ and a set of _options_:
