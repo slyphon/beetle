@@ -41,19 +41,29 @@ module Beetle
       end
     end
 
+#     def incr(msg_id, key)
+#       key = key.to_s
+
+#       opts = { 
+#         :query    => { '_id' => msg_id },
+#         :update   => { '$inc' => { key => 1 } },
+#         :new      => true,
+#         :fields   => { key => 1, '_id' => 0 },
+#       }
+
+#       handle_failover do
+#         logger.warn("LOOK HERE -->> In incr, before find_and_modify, count is #{ collection.find({ '_id' => msg_id }).count}")
+#         collection.find_and_modify(opts).fetch(key)
+#       end
+#     end
+
+    # XXX: there is an implementation weakness here, this method will not return the new incremented value.
+    # it should but i can't get mongo's findAndModify command to work properly. 
     def incr(msg_id, key)
-      key = key.to_s
-
-      opts = { 
-        :query  => { :_id => msg_id },
-        :update => { :$inc => { key => 1 } },
-        :new => true,
-        :fields => { key => 1, :_id => 0 },
-      }
-
       handle_failover do
-        collection.find_and_modify(opts).fetch(key)
+        collection.update({ :_id => msg_id }, { :$inc => { key => 1 } }, { :safe => true }).fetch('updatedExisting')
       end
+      nil
     end
 
     def msetnx(msg_id, values)
