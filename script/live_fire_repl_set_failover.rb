@@ -34,8 +34,10 @@ def main
     mds.set(msg_id, 'foo', 0)
     mds.get(msg_id, 'foo')
     mds.del(msg_id, 'foo')
-    sleep(0.07)
+    sleep(0.7)
   end
+rescue Interrupt
+  exit 0
 end
 
 main
