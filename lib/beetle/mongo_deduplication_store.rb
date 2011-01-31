@@ -63,7 +63,12 @@ module Beetle
     end
 
     def connection #:nodoc:
-      @connection ||= Mongo::Connection.from_uri(@config.mongo_uri)
+      @connection ||= 
+        if @config.mongo_connection_proc
+          @config.mongo_connection_proc.call
+        else
+          Mongo::Connection.from_uri(@config.mongo_uri)
+        end
     end
 
     def db #:nodoc:

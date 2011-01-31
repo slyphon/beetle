@@ -61,6 +61,14 @@ module Beetle
     # the name of the mongodb collection to use for the dedup store
     attr_accessor :mongo_collection_name
 
+    # a proc that will return a Mongo connection object. This is to allow flexibility
+    # with a somewhat unstable part of the driver API (for example, ReplicaSets have 
+    # their own connection object). Providing configuration options for every possible
+    # combination of mongo driver configs would be...challenging
+    #
+    # if this is set, mongo_uri will be ignored
+    attr_accessor :mongo_connection_proc
+
     # deduplication store type (:redis or :mongodb)
     attr_accessor :deduplication_store_impl
 
