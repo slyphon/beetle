@@ -5,29 +5,24 @@ module Beetle
   class MongoDeduplicationStore
     include Logging
 
+    SET_OPER_RVAL = 'OK'
+
     def initialize(config = Beetle.config)
       @config = config
     end
 
     def prepare(msg_id)
-      doc = {
-        :_id        => msg_id, 
-#         :timeout    => 0,
-#         :status     => nil,
-#         :delay      => nil,
-#         :attempts   => 0,
-#         :exceptions => 0,
-#         :expires    => nil,
-      }
+      doc = { :_id => msg_id }
 
       collection.insert(doc, :safe => true)
-      true
+      nil
     rescue Mongo::OperationFailure => e
       raise e unless e.message =~ /^11000/  # duplicate key error, OK, document already exists for message
     end
 
     def set(msg_id, key, value)
       collection.update({:_id => msg_id, key => value}, {:safe => true})
+      SET_OPER_RVAL
     end
 
     def get(msg_id, key)
@@ -45,7 +40,7 @@ module Beetle
         :query  => { :_id => msg_id },
         :update => { :$inc => { key => 1 } },
         :new => true,
-        :fields => { key => 1 },
+        :fields => { key => 1, :_id => 0 },
       }
 
       collection.find_and_modify(opts).fetch(key)

@@ -32,14 +32,14 @@ module Beetle
       assert_equal 0, @mdds.msetnx(@msg_id, { "a" => 1, "b" => 2 })
     end
 
-#     test "msetnx returns 0 or 1" do
-#       assert_equal 1, @mdds.msetnx(@msg_id, { "a" => 1, "b" => 2})
-#       assert_equal "1", @mdds.get(@msg_id, "a")
-#       assert_equal "2", @mdds.get(@msg_id, "b")
-#       assert_equal 0, @mdds.msetnx(@msg_id, "a", 3, "b", 4)
-#       assert_equal "1", @mdds.get(@msg_id, "a")
-#       assert_equal "2", @mdds.get(@msg_id, "b")
-#     end
+    test "msetnx returns 0 or 1" do
+      assert_equal 1,   @mdds.msetnx(@msg_id, { "a" => 1, "b" => 2 })
+      assert_equal "1", @mdds.get(@msg_id, "a")
+      assert_equal "2", @mdds.get(@msg_id, "b")
+      assert_equal 0,   @mdds.msetnx(@msg_id, { "a" => 3, "b" => 4 })
+      assert_equal "1", @mdds.get(@msg_id, "a")
+      assert_equal "2", @mdds.get(@msg_id, "b")
+    end
 
     test "incr returns the new value of the key" do
       @mdds.collection.update({ :_id => @msg_id }, { :foo => 3 }, { :safe => true })
@@ -56,7 +56,6 @@ module Beetle
     test "get returns nil for a key that doesn't exist" do
       assert_nil @mdds.get(@msg_id, 'foo')
     end
-
   end
 end
 
