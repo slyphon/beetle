@@ -45,8 +45,13 @@ module Beetle
     # accessor for the beetle configuration
     attr_reader :config
 
+    DEDUPLICATION_CLASS_MAP = {
+      :redis    => DeduplicationStore,
+      :mongodb  => MongoDeduplicationStore,
+    }
+
     # create a fresh Client instance from a given configuration object
-    def initialize(config=Beetle.config, deduplication_store=nil)
+    def initialize(config=Beetle.config)
       @config  = config
       @servers = config.servers.split(/ *, */)
       @additional_subscription_servers = config.additional_subscription_servers.split(/ *, */)
@@ -54,7 +59,7 @@ module Beetle
       @queues = {}
       @messages = {}
       @bindings = {}
-      @deduplication_store = (deduplication_store || DeduplicationStore.new(config))
+      @deduplication_store = DEDUPLICATION_CLASS_MAP.fetch(config.deduplication_store_impl).new(config)
     end
 
     # register an exchange with the given _name_ and a set of _options_:

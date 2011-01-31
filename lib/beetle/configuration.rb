@@ -61,6 +61,8 @@ module Beetle
     # the name of the mongodb collection to use for the dedup store
     attr_accessor :mongo_collection_name
 
+    # deduplication store type (:redis or :mongodb)
+    attr_accessor :deduplication_store_impl
 
     def initialize #:nodoc:
       self.system_name = "system"
@@ -84,11 +86,13 @@ module Beetle
 
       self.publishing_timeout = 0
 
-      self.mongo_uri = 'mongodb://localhost:27107'
+      self.mongo_uri = 'mongodb://localhost:27017'
       self.mongo_db_name = 'beetle_deduplication_store'
       self.mongo_collection_name = 'messages'
 
       self.log_file = STDOUT
+
+      self.deduplication_store_impl = :redis
     end
 
     # setting the external config file will load it on assignment

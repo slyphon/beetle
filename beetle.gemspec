@@ -33,6 +33,7 @@ Gem::Specification.new do |s|
   
   unless defined?(::JRUBY_VERSION)
     s.add_runtime_dependency("uuid4r",                [">= 0.1.1"])
+    s.add_runtime_dependency('bson_ext',              ["~> 1.2.0"])
   end
 
   s.add_runtime_dependency("bunny",                 ["= 0.6.0"])
@@ -42,6 +43,7 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency('i18n',                  [">= 0.5.0"])
   s.add_runtime_dependency("activesupport",         ["~> 3.0.0"])
   s.add_runtime_dependency("daemons",               [">= 1.0.10"])
+  s.add_runtime_dependency("mongo",                 ["~> 1.2.0"])
   s.add_development_dependency("mocha",             [">= 0"])
   s.add_development_dependency("rcov",              [">= 0"])
   s.add_development_dependency("cucumber",          [">= 0.7.2"])

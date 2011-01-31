@@ -31,11 +31,24 @@ module Beetle
     end
 
     def get(msg_id, key)
-      collection.find_one({:id => msg_id}, {:fields => key})
+      key = key.to_s
+
+      if doc = collection.find_one({ :_id => msg_id, key => { :$exists => true } }, { :fields => { key => 1, :_id => 0 } })
+        return doc[key].to_s
+      end
     end
 
     def incr(msg_id, key)
-      collection.update({:_id => msg_id}, {:$inc => { key => 1 }}, {:safe => true})
+      key = key.to_s
+
+      opts = { 
+        :query  => { :_id => msg_id },
+        :update => { :$inc => { key => 1 } },
+        :new => true,
+        :fields => { key => 1 },
+      }
+
+      collection.find_and_modify(opts).fetch(key)
     end
 
     def msetnx(msg_id, values)
@@ -47,26 +60,29 @@ module Beetle
     end
 
     def setnx(msg_id, key, value)
-      result = collection.update({:_id => msg_id, key => { :$exists => false }}, {key => value}, {:safe => true})
-      result['updatedExisting'] ? 1 : 0
+      collection.update({:_id => msg_id, key => { :$exists => false }}, { key => value }, {:safe => true}).fetch('updatedExisting')
     end
 
     def del(msg_id, key)
-      collection.update({:_id => msg_id}, {:$unset => { key => 1 } }, {:safe => true})
+      collection.update({:_id => msg_id, key => { :$exists => true }}, { :$unset => { key => 1 } }, {:safe => true}).fetch('updatedExisting')
     end
 
-    protected
-      def connection
-        @connection ||= Mongo::Connection.from_uri(@config.mongo_uri)
-      end
+    def connection #:nodoc:
+      @connection ||= Mongo::Connection.from_uri(@config.mongo_uri)
+    end
 
-      def db
-        @db ||= connection[@config.mongo_db_name]
-      end
+    def db #:nodoc:
+      @db ||= connection[@config.mongo_db_name]
+    end
 
-      def collection
-        @collection ||= db[@config.mongo_collection_name]
-      end
+    def collection #:nodoc:
+      @collection ||= db[@config.mongo_collection_name]
+    end
+
+    # only for testing!
+    def drop_collection_only_for_tests_danger_will_robinson_danger! #:nodoc:
+      db.drop_collection(@config.mongo_collection_name)
+    end
   end
 end
 

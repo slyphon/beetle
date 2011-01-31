@@ -1,12 +1,15 @@
 $:.unshift(File.expand_path('..', __FILE__))
 require 'bunny-ext'
 
+require 'active_support/all'
+require 'redis'
+
+require 'mongo'
+
 unless defined?(::JRUBY_VERSION)
   require 'uuid4r'
 end
 
-require 'active_support/all'
-require 'redis'
 
 if defined?(::JRUBY_VERSION)
   require 'java'
