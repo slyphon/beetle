@@ -108,7 +108,7 @@ module Beetle
         begin
           processor = Handler.create(handler, opts)
           message_options = opts.merge(:server => server, :store => @client.deduplication_store)
-          m = Message.new(amqp_queue_name, header, data, message_options)
+          m = Message.create(amqp_queue_name, header, data, message_options)
           result = m.process(processor)
           if result.reject?
             $AMQP_DEBUG = 1

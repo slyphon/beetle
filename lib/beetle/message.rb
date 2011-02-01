@@ -53,12 +53,26 @@ module Beetle
     # value returned by handler execution
     attr_reader :handler_result
 
+    # create a new message of the appropriate subclass depending on what
+    # deduplication store we're using
+    def self.create(*args)
+      case Beetle.config.deduplication_store_impl
+      when :redis
+        RedisMessage.new(*args)
+      when :mongodb
+        MongoMessage.new(*args)
+      else
+        raise "Configuration problem, unrecognized deduplication_store_impl value"
+      end
+    end
+
     def initialize(queue, header, body, opts = {})
       @queue  = queue
       @header = header
       @data   = body
       setup(opts)
       decode
+      @store.prepare(msg_id)
     end
 
     def setup(opts) #:nodoc:
@@ -79,7 +93,6 @@ module Beetle
       @format_version = headers[:format_version].to_i
       @flags = headers[:flags].to_i
       @expires_at = headers[:expires_at].to_i
-      @store.prepare(msg_id)
     rescue Exception => @exception
       Beetle::reraise_expectation_errors!
       logger.error "Could not decode message. #{self.inspect}"
@@ -100,14 +113,14 @@ module Beetle
       opts
     end
 
-    # unique message id. used to form various keys in the deduplication store.
-    def msg_id
-      @msg_id ||= "msgid:#{queue}:#{uuid}"
+    # generate uuid for publishing
+    def self.generate_uuid
+      Beetle::UUID.uuid()
     end
-
+    
     # current time (UNIX timestamp)
     def now #:nodoc:
-      Time.now.to_i
+      self.class.now
     end
 
     # current time (UNIX timestamp)
@@ -115,14 +128,14 @@ module Beetle
       Time.now.to_i
     end
 
+    # unique message id. used to form various keys in the deduplication store.
+    def msg_id
+      @msg_id ||= "msgid:#{queue}:#{uuid}"
+    end
+
     # a message has expired if the header expiration timestamp is msaller than the current time
     def expired?
       @expires_at < now
-    end
-
-    # generate uuid for publishing
-    def self.generate_uuid
-      Beetle::UUID.uuid()
     end
 
     # whether the publisher has tried sending this message to two servers
@@ -137,95 +150,80 @@ module Beetle
 
     # store handler timeout timestamp in the deduplication store
     def set_timeout!
-      $stderr.puts "setting timeout"
-      @store.set(msg_id, :timeout, now + timeout)
+      raise NotImplementedError
     end
 
     # handler timed out?
     def timed_out?
-      ts_now = now
-      t = @store.get(msg_id, :timeout).to_i
-      logger.warn "timed_out? ts_now: #{ts_now}, recoreded time: #{t}"
-      t.to_i < ts_now
+      raise NotImplementedError
     end
 
     # reset handler timeout in the deduplication store
     def timed_out!
-      @store.set(msg_id, :timeout, 0)
+      raise NotImplementedError
     end
 
     # message handling completed?
     def completed?
-      @store.get(msg_id, :status) == "completed"
+      raise NotImplementedError
     end
 
     # mark message handling complete in the deduplication store
     def completed!
-      @store.set(msg_id, :status, "completed")
-      timed_out!
+      raise NotImplementedError
     end
 
     # whether we should wait before running the handler
     def delayed?
-      (t = @store.get(msg_id, :delay)) && t.to_i > now
+      raise NotImplementedError
     end
 
     # store delay value in the deduplication store
     def set_delay!
-      @store.set(msg_id, :delay, now + delay)
+      raise NotImplementedError
     end
 
     # how many times we already tried running the handler
     def attempts
-      @store.get(msg_id, :attempts).to_i
+      raise NotImplementedError
     end
 
     # record the fact that we are trying to run the handler
     def increment_execution_attempts!
-      @store.incr(msg_id, :attempts)
+      raise NotImplementedError
     end
 
     # whether we have already tried running the handler as often as specified when the handler was registered
     def attempts_limit_reached?
-      (limit = @store.get(msg_id, :attempts)) && limit.to_i >= attempts_limit
+      raise NotImplementedError
     end
 
     # increment number of exception occurences in the deduplication store
     def increment_exception_count!
-      @store.incr(msg_id, :exceptions)
+      raise NotImplementedError
     end
 
     # whether the number of exceptions has exceeded the limit set when the handler was registered
     def exceptions_limit_reached?
-      @store.get(msg_id, :exceptions).to_i > exceptions_limit
+      raise NotImplementedError
     end
 
     # have we already seen this message? if not, set the status to "incomplete" and store
     # the message exipration timestamp in the deduplication store.
     def key_exists?
-      old_message = 0 == @store.msetnx(msg_id, :status =>"incomplete", :expires => @expires_at, :timeout => now + timeout)
-      if old_message
-        logger.debug "Beetle: received duplicate message: #{msg_id} on queue: #{@queue}"
-      end
-      old_message
+      raise NotImplementedError
     end
 
     # aquire execution mutex before we run the handler (and delete it if we can't aquire it).
     def aquire_mutex!
-      if mutex = @store.setnx(msg_id, :mutex, now)
-        logger.debug "Beetle: aquired mutex: #{msg_id}"
-      else
-        delete_mutex!
-      end
-      mutex
+      raise NotImplementedError
     end
-
+    
     # delete execution mutex
     def delete_mutex!
-      @store.del(msg_id, :mutex)
-      logger.debug "Beetle: deleted mutex: #{msg_id}"
+      raise NotImplementedError
     end
-
+    
     # process this message and do not allow any exception to escape to the caller
     def process(handler)
       logger.debug "Beetle: processing message #{msg_id}"
@@ -244,7 +242,7 @@ module Beetle
       result
     end
 
-    private
+    protected
 
     def process_internal(handler)
       if @exception

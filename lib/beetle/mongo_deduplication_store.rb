@@ -1,7 +1,7 @@
 module Beetle
-  #--
-  # MongoDB has N-way replication w/ automatic failover (replica-sets), so we
-  # don't need the config reloading stuff in here.
+  # Handles establishing a connection to mongo according to the configs, and wraps calls to the
+  # collection object in a retry block. In case of a connection failure, calls
+  # will automatically be retried, so it's important to make sure modifications are atomic.
   class MongoDeduplicationStore
     include Logging
 
@@ -24,68 +24,13 @@ module Beetle
       raise e unless e.message =~ /^11000/  # duplicate key error, OK, document already exists for message
     end
 
-    def set(msg_id, key, value)
-      handle_failover do
-        collection.update({:_id => msg_id, key => value}, {:safe => true})
-      end
-      SET_OPER_RVAL
-    end
-
-    def get(msg_id, key)
-      key = key.to_s
-
-      handle_failover do
-        if doc = collection.find_one({ :_id => msg_id, key => { :$exists => true } }, { :fields => { key => 1, :_id => 0 } })
-          return doc[key].to_s
+    def method_missing(sym, *args, &block)
+      if collection.respond_to?(sym)
+        handle_failover do
+          collection.__send__(sym, *args, &block)
         end
-      end
-    end
-
-#     def incr(msg_id, key)
-#       key = key.to_s
-
-#       opts = { 
-#         :query    => { '_id' => msg_id },
-#         :update   => { '$inc' => { key => 1 } },
-#         :new      => true,
-#         :fields   => { key => 1, '_id' => 0 },
-#       }
-
-#       handle_failover do
-#         logger.warn("LOOK HERE -->> In incr, before find_and_modify, count is #{ collection.find({ '_id' => msg_id }).count}")
-#         collection.find_and_modify(opts).fetch(key)
-#       end
-#     end
-
-    # XXX: there is an implementation weakness here, this method will not return the new incremented value.
-    # it should but i can't get mongo's findAndModify command to work properly. 
-    def incr(msg_id, key)
-      handle_failover do
-        collection.update({ :_id => msg_id }, { :$inc => { key => 1 } }, { :safe => true }).fetch('updatedExisting')
-      end
-      nil
-    end
-
-    def msetnx(msg_id, values)
-      logger.warn "MongoDeduplicationStore#msetnx msg_id: #{msg_id}, values: #{values.inspect}"
-
-      query = { :_id => msg_id }
-      values.keys.each { |k| query[k] = { :$exists => false } }
-      
-      handle_failover do
-        collection.update(query, values, {:safe => true})['updatedExisting'] ? 1 : 0
-      end
-    end
-
-    def setnx(msg_id, key, value)
-      handle_failover do
-        collection.update({:_id => msg_id, key => { :$exists => false }}, { key => value }, {:safe => true}).fetch('updatedExisting')
-      end
-    end
-
-    def del(msg_id, key)
-      handle_failover do
-        collection.update({:_id => msg_id, key => { :$exists => true }}, { :$unset => { key => 1 } }, {:safe => true}).fetch('updatedExisting')
+      else
+        super
       end
     end
 
