@@ -49,14 +49,20 @@ namespace :rabbit do
     sleep 1
     exec "sudo #{script} #{node_name} #{port}"
   end
+
+  directory master_dir  = 'tmp/master'
+  directory slave_dir   = 'tmp/slave'
+
   desc "start rabbit instance 1"
-  task :start1 do
+  task :start1 => master_dir do
     start "rabbit1", 5672
   end
+
   desc "start rabbit instance 2"
-  task :start2 do
+  task :start2 => slave_dir do
     start "rabbit2", 5673
   end
+
   desc "reset rabbit instances (deletes all data!)"
   task :reset do
      ["rabbit1", "rabbit2"].each do |node|
