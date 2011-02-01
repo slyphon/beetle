@@ -137,12 +137,16 @@ module Beetle
 
     # store handler timeout timestamp in the deduplication store
     def set_timeout!
+      $stderr.puts "setting timeout"
       @store.set(msg_id, :timeout, now + timeout)
     end
 
     # handler timed out?
     def timed_out?
-      (t = @store.get(msg_id, :timeout)) && t.to_i < now
+      ts_now = now
+      t = @store.get(msg_id, :timeout).to_i
+      logger.warn "timed_out? ts_now: #{ts_now}, recoreded time: #{t}"
+      t.to_i < ts_now
     end
 
     # reset handler timeout in the deduplication store
@@ -228,6 +232,7 @@ module Beetle
       result = nil
       begin
         result = process_internal(handler)
+        logger.warn "process_internal, result: #{result.inspect}"
         handler.process_exception(@exception) if @exception
         handler.process_failure(result) if result.failure?
       rescue Exception => e
@@ -250,17 +255,21 @@ module Beetle
         ack!
         RC::Ancient
       elsif simple?
+        logger.warn "process_internal simple?"
         ack!
         run_handler(handler) == RC::HandlerCrash ? RC::AttemptsLimitReached : RC::OK
       elsif !key_exists?
+        logger.warn "!key_exists?"
         run_handler!(handler)
       elsif completed?
+        logger.warn "completed?"
         ack!
         RC::OK
       elsif delayed?
         logger.warn "Beetle: ignored delayed message (#{msg_id})!"
         RC::Delayed
       elsif !timed_out?
+        logger.warn "!timed_out?"
         RC::HandlerNotYetTimedOut
       elsif attempts_limit_reached?
         ack!

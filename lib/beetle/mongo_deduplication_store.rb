@@ -67,6 +67,8 @@ module Beetle
     end
 
     def msetnx(msg_id, values)
+      logger.warn "MongoDeduplicationStore#msetnx msg_id: #{msg_id}, values: #{values.inspect}"
+
       query = { :_id => msg_id }
       values.keys.each { |k| query[k] = { :$exists => false } }
       

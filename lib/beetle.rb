@@ -78,3 +78,28 @@ module Beetle
     Timeout
   end
 end
+
+#----------------------------------------------
+# MONKEY PATCH AMQP!
+require 'amqp'
+require 'mq'
+
+if AMQP::VERSION == '0.7.0'
+  MQ::Header.class_eval do
+    # Reject this message (XXX currently unimplemented in rabbitmq)
+    # * :requeue => true | false (default false)
+    def reject(opts = {})
+      # it's '@mq.connection.broker', not @mq.broker!!
+#       if @mq.connection.broker.server_properties[:product] == "RabbitMQ"
+#         raise NotImplementedError.new("RabbitMQ doesn't implement the Basic.Reject method\nSee http://lists.rabbitmq.com/pipermail/rabbitmq-discuss/2009-February/002853.html")
+#       else
+        @mq.callback {
+          @mq.send AMQP::Protocol::Basic::Reject.new(opts.merge(:delivery_tag => properties[:delivery_tag]))
+        }
+#       end
+    end
+  end
+end
+
+#----------------------------------------------
+

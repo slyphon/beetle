@@ -111,6 +111,7 @@ module Beetle
           m = Message.new(amqp_queue_name, header, data, message_options)
           result = m.process(processor)
           if result.reject?
+            $AMQP_DEBUG = 1
             sleep 1
             header.reject(:requeue => true)
           elsif reply_to = header.properties[:reply_to]
@@ -121,10 +122,11 @@ module Beetle
             exchange = MQ::Exchange.new(mq(server), :direct, "", :key => reply_to)
             exchange.publish(m.handler_result.to_s, :headers => {:status => status})
           end
-        rescue Exception
+        rescue Exception => e
           Beetle::reraise_expectation_errors!
+          logger.error "Beetle: caught error: #{e.class}: #{e.message}\n" + e.backtrace.map { |n| "\t#{n}" }.join("\n")
           # swallow all exceptions
-          logger.error "Beetle: internal error during message processing: #{$!}: #{$!.backtrace.join("\n")}"
+#           logger.error "Beetle: internal error during message processing: #{$!}: #{$!.backtrace.join("\n")}"
         end
       end
     end

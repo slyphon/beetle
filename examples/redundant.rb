@@ -16,6 +16,26 @@ Beetle.config.logger.level = Logger::INFO
 # setup client
 client = Beetle::Client.new
 
+def mongo
+  Beetle.config.deduplication_store_impl = :mongodb
+
+  Beetle.config.mongo_connection_proc = lambda do
+    log = Logger.new($stderr).tap do |log|
+      log.level = Logger::DEBUG
+      log.formatter = Logger::Formatter.new
+    end
+
+    seeds = (0..2).to_a.map { |n| ['localhost', 37000 + n] }
+    
+    seeds <<  {:rs_name => 'rset0', :logger => log}
+
+    Mongo::ReplSetConnection.new(*seeds)
+  end
+end
+
+mongo
+# Beetle.config.deduplication_store_impl = :redis
+
 # use two servers
 Beetle.config.servers = "localhost:5672, localhost:5673"
 # instantiate a client

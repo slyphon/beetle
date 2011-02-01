@@ -11,3 +11,4 @@ test/coverage
 tmp
 *.gem
 coverage
+.gem_paths_cache
