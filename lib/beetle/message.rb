@@ -58,8 +58,10 @@ module Beetle
     def self.create(*args)
       case Beetle.config.deduplication_store_impl
       when :redis
+        require 'beetle/redis_message'
         RedisMessage.new(*args)
       when :mongodb
+        require 'beetle/mongo_message'
         MongoMessage.new(*args)
       else
         raise "Configuration problem, unrecognized deduplication_store_impl value"
@@ -253,29 +255,29 @@ module Beetle
         ack!
         RC::Ancient
       elsif simple?
-        logger.warn "process_internal simple?"
+        logger.warn "Beetle: process_internal simple"
         ack!
         run_handler(handler) == RC::HandlerCrash ? RC::AttemptsLimitReached : RC::OK
       elsif !key_exists?
-        logger.warn "!key_exists?"
+        logger.warn "Beetle: key does not exist"
         run_handler!(handler)
       elsif completed?
-        logger.warn "completed?"
+        logger.warn "Beetle: completed, acking message"
         ack!
         RC::OK
       elsif delayed?
         logger.warn "Beetle: ignored delayed message (#{msg_id})!"
         RC::Delayed
       elsif !timed_out?
-        logger.warn "!timed_out?"
+        logger.warn "Beetle: message not yet timed out"
         RC::HandlerNotYetTimedOut
       elsif attempts_limit_reached?
-        ack!
         logger.warn "Beetle: reached the handler execution attempts limit: #{attempts_limit} on #{msg_id}"
+        ack!
         RC::AttemptsLimitReached
       elsif exceptions_limit_reached?
-        ack!
         logger.warn "Beetle: reached the handler exceptions limit: #{exceptions_limit} on #{msg_id}"
+        ack!
         RC::ExceptionsLimitReached
       else
         set_timeout!
@@ -328,16 +330,5 @@ module Beetle
       end
     end
 
-    # ack the message for rabbit. deletes all keys associated with this message in the
-    # deduplication store if we are sure this is the last message with the given msg_id.
-    def ack!
-      #:doc:
-      logger.debug "Beetle: ack! for message #{msg_id}"
-      header.ack
-      return if simple? # simple messages don't use the deduplication store
-      if !redundant? || @store.incr(msg_id, :ack_count) == 2
-        @store.del_keys(msg_id)
-      end
-    end
   end
 end

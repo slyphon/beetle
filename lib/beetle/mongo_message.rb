@@ -1,6 +1,7 @@
 module Beetle
   class MongoMessage < Message
     def set_timeout!
+      logger.warn "Beetle: setting timeout"
       @store.update({ :_id => msg_id }, { :timeout => ( Time.now + timeout ) }, { :safe => true })
     end
 
@@ -37,7 +38,7 @@ module Beetle
     end
 
     def attempts_limit_reached?
-      @store.find({ :_id => msg_id, :attempts => { :$gte => attempts_limit } }}.count > 0
+      @store.find({ :_id => msg_id, :attempts => { :$gte => attempts_limit } }).count > 0
     end
 
     def increment_exception_count!
@@ -45,8 +46,10 @@ module Beetle
     end
 
     def exceptions_limit_reached?
-      @store.find({ :_id => msg_id, :exceptions => { :$gt => exceptions_limit } }}.count > 0
+      @store.find({ :_id => msg_id, :exceptions => { :$gt => exceptions_limit } }).count > 0
     end
+
+    require 'pp'
 
     #---
     # btw, having a query? method update the database as a *side effect*?
@@ -57,11 +60,16 @@ module Beetle
       # we're only going to update the record if these keys don't exist
       %w[status expires timeout].each { |k| query[k] = { :$exists => false } }
 
+      logger.debug "#{@store.find(query).to_a}"
+
       did_update = @store.update(query, { :status => 'incomplete', :expires => @expires_at, :timeout => (Time.now + timeout) }, { :safe => true }).fetch('updatedExisting')
+
+      logger.debug "did_update of record? #{did_update.inspect}"
       
       logger.debug "Beetle: received duplicate message: #{msg_id} on queue #{@queue}" unless did_update
 
-      did_update
+      # if we *didn't* update a record, that means that the key *did* already exist
+      !did_update
     end
 
     def acquire_mutex!
@@ -82,6 +90,17 @@ module Beetle
       end
     end
 
+    protected
+      def incr_ack_count
+        @store.find_and_modify(:query => { :_id => msg_id }, :update => { :$inc => { :ack_count => 1 } }, :new => true).fetch('ack_count')
+      end
+
+      def ack!
+        if !redundant? || (incr_ack_count >= 2)
+          logger.debug "deleting record for msg_id: #{msg_id}"
+          @store.remove({:_id => msg_id}, {:safe => true})
+        end
+      end
   end
 end
 

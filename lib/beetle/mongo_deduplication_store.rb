@@ -24,6 +24,12 @@ module Beetle
       raise e unless e.message =~ /^11000/  # duplicate key error, OK, document already exists for message
     end
 
+    def garbage_collect_keys(now = Time.now)
+      threshold = Time.now + @config.gc_threshold
+
+      remove({:expires => { :$lt => threshold } }, { :safe => true })
+    end
+
     def method_missing(sym, *args, &block)
       if collection.respond_to?(sym)
         handle_failover do

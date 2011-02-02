@@ -74,6 +74,19 @@ module Beetle
       @store.del(msg_id, :mutex)
       logger.debug "Beetle: deleted mutex: #{msg_id}"
     end
+
+    protected
+      # ack the message for rabbit. deletes all keys associated with this message in the
+      # deduplication store if we are sure this is the last message with the given msg_id.
+      def ack!
+        #:doc:
+        logger.debug "Beetle: ack! for message #{msg_id}"
+        header.ack
+        return if simple? # simple messages don't use the deduplication store
+        if !redundant? || @store.incr(msg_id, :ack_count) == 2
+          @store.del_keys(msg_id)
+        end
+      end
   end
 end
 
